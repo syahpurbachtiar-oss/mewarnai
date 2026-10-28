@@ -1,0 +1,1392 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Mewarnai Kartun Interaktif Multi-Level</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Canvas Confetti CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Fredoka', 'Inter', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        /* Canvas Checkerboard Background for Transparency */
+        .canvas-bg {
+            background-color: #ffffff;
+            background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+            background-size: 16px 16px;
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Color Swatch Pulse active state */
+        .color-active {
+            transform: scale(1.15);
+            ring: 4px;
+        }
+
+        /* Custom Animations */
+        @keyframes pop {
+            0% { transform: scale(0.9); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .animate-pop {
+            animation: pop 0.2s ease-out;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 h-screen flex flex-col overflow-hidden">
+
+    <!-- ================= TOP NAVIGATION BAR ================= -->
+    <header class="bg-white border-b border-slate-200 px-4 py-2.5 flex items-center justify-between z-20 shadow-sm">
+        <!-- Logo & Title -->
+        <div class="flex items-center gap-3">
+            <div class="bg-gradient-to-tr from-amber-400 to-rose-500 text-white p-2.5 rounded-2xl shadow-md">
+                <i data-lucide="palette" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg sm:text-xl text-slate-800 leading-tight">Dunia Warna Kartun</h1>
+                <p class="text-xs text-slate-500 hidden sm:block">Game Mewarnai Interaktif Multi-Level (TK - SMA)</p>
+            </div>
+        </div>
+
+        <!-- Current Level & Info -->
+        <div class="flex items-center gap-2">
+            <button id="levelBadgeBtn" onclick="openLevelModal()" class="flex items-center gap-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-xl transition text-xs sm:text-sm font-semibold">
+                <span id="badgeLevelIcon">🎈</span>
+                <span id="badgeLevelText">TK / PAUD</span>
+                <i data-lucide="chevron-down" class="w-4 h-4"></i>
+            </button>
+
+            <!-- Audio Toggle Button -->
+            <button id="audioToggleBtn" onclick="toggleAudio()" class="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition" title="Toggle Suara">
+                <i data-lucide="volume-2" id="audioIcon" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <!-- Action Buttons (Finish & Download) -->
+        <div class="flex items-center gap-2">
+            <button onclick="downloadImage()" class="flex items-center gap-1.5 bg-sky-500 hover:bg-sky-600 text-white px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold shadow-sm transition">
+                <i data-lucide="download" class="w-4 h-4"></i>
+                <span class="hidden md:inline">Simpan Karya</span>
+            </button>
+
+            <button onclick="finishCelebration()" class="flex items-center gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold shadow-md transition animate-bounce">
+                <i data-lucide="sparkles" class="w-4 h-4"></i>
+                <span>Selesai! 🎉</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- ================= MAIN WORKSPACE ================= -->
+    <div class="flex-1 flex overflow-hidden relative">
+
+        <!-- ===== LEFT SIDEBAR: TOOLBOX ===== -->
+        <aside class="w-16 sm:w-20 bg-white border-r border-slate-200 flex flex-col items-center py-4 gap-4 z-10 shadow-sm overflow-y-auto">
+            
+            <!-- Tool: Bucket Fill -->
+            <button id="toolFill" onclick="setTool('fill')" class="tool-btn p-3 rounded-2xl flex flex-col items-center gap-1 text-slate-600 hover:bg-slate-100 transition w-12 sm:w-14 bg-amber-100 text-amber-700 font-bold border-2 border-amber-400">
+                <i data-lucide="paint-bucket" class="w-5 h-5"></i>
+                <span class="text-[10px]">Ember</span>
+            </button>
+
+            <!-- Tool: Brush -->
+            <button id="toolBrush" onclick="setTool('brush')" class="tool-btn p-3 rounded-2xl flex flex-col items-center gap-1 text-slate-600 hover:bg-slate-100 transition w-12 sm:w-14">
+                <i data-lucide="brush" class="w-5 h-5"></i>
+                <span class="text-[10px]">Kuas</span>
+            </button>
+
+            <!-- Tool: Eraser -->
+            <button id="toolEraser" onclick="setTool('eraser')" class="tool-btn p-3 rounded-2xl flex flex-col items-center gap-1 text-slate-600 hover:bg-slate-100 transition w-12 sm:w-14">
+                <i data-lucide="eraser" class="w-5 h-5"></i>
+                <span class="text-[10px]">Hapus</span>
+            </button>
+
+            <!-- Tool: Pan / Move (Visible for SMP/SMA) -->
+            <button id="toolPan" onclick="setTool('pan')" class="tool-btn p-3 rounded-2xl flex flex-col items-center gap-1 text-slate-600 hover:bg-slate-100 transition w-12 sm:w-14 hidden">
+                <i data-lucide="hand" class="w-5 h-5"></i>
+                <span class="text-[10px]">Geser</span>
+            </button>
+
+            <hr class="w-10 border-slate-200 my-1">
+
+            <!-- History Controls -->
+            <button onclick="undo()" id="undoBtn" class="p-2.5 rounded-xl text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent transition" title="Urungkan (Undo)">
+                <i data-lucide="undo-2" class="w-5 h-5"></i>
+            </button>
+
+            <button onclick="redo()" id="redoBtn" class="p-2.5 rounded-xl text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent transition" title="Ulangi (Redo)">
+                <i data-lucide="redo-2" class="w-5 h-5"></i>
+            </button>
+
+            <button onclick="resetCanvas()" class="p-2.5 rounded-xl text-rose-500 hover:bg-rose-50 transition" title="Bersihkan Semua">
+                <i data-lucide="rotate-ccw" class="w-5 h-5"></i>
+            </button>
+        </aside>
+
+        <!-- ===== CENTER: CANVAS WORKSPACE ===== -->
+        <main class="flex-1 bg-slate-200 relative flex items-center justify-center overflow-hidden p-2 sm:p-4">
+            
+            <!-- Canvas Transformation Viewport Wrapper -->
+            <div id="canvasViewport" class="relative w-full h-full flex items-center justify-center overflow-hidden">
+                
+                <!-- Canvas Container (Responsive Centered Container) -->
+                <div id="canvasContainer" class="relative shadow-2xl rounded-2xl overflow-hidden canvas-bg transition-transform duration-75 origin-center border-4 border-white">
+                    <!-- Display Composite Canvas (Interactive Target) -->
+                    <canvas id="mainCanvas" width="800" height="800" class="block w-full h-full cursor-crosshair touch-none"></canvas>
+                </div>
+
+            </div>
+
+            <!-- Floating Pan & Zoom Toolbar (Level 3 & 4 Controls) -->
+            <div id="zoomToolbar" class="absolute top-4 right-4 bg-white/90 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-lg p-1.5 flex items-center gap-1 z-10 hidden">
+                <button onclick="zoomOut()" class="p-2 text-slate-700 hover:bg-slate-100 rounded-xl transition" title="Perkecil">
+                    <i data-lucide="zoom-out" class="w-4 h-4"></i>
+                </button>
+                <span id="zoomLabel" class="text-xs font-semibold text-slate-600 px-2 min-w-[45px] text-center">100%</span>
+                <button onclick="zoomIn()" class="p-2 text-slate-700 hover:bg-slate-100 rounded-xl transition" title="Perbesar">
+                    <i data-lucide="zoom-in" class="w-4 h-4"></i>
+                </button>
+                <button onclick="resetZoom()" class="p-2 text-slate-700 hover:bg-slate-100 rounded-xl transition" title="Reset Zoom">
+                    <i data-lucide="maximize-2" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <!-- Toast / Floating Notification -->
+            <div id="toast" class="absolute bottom-6 left-1/2 -translate-x-1/2 bg-slate-800/90 text-white px-4 py-2 rounded-2xl shadow-xl text-sm font-medium transition-all opacity-0 pointer-events-none translate-y-4 z-30 flex items-center gap-2">
+                <i data-lucide="info" class="w-4 h-4 text-amber-400"></i>
+                <span id="toastMsg">Pemberitahuan</span>
+            </div>
+        </main>
+
+        <!-- ===== RIGHT SIDEBAR: COLOR PALETTE & CONTROLS ===== -->
+        <aside class="w-64 sm:w-72 bg-white border-l border-slate-200 flex flex-col p-4 z-10 shadow-sm overflow-y-auto">
+            
+            <!-- Color Preview Header -->
+            <div class="flex items-center justify-between mb-4 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                <div class="flex items-center gap-3">
+                    <div id="currentColorPreview" class="w-9 h-9 rounded-xl shadow-inner border-2 border-white ring-2 ring-slate-300 bg-rose-500 transition-all"></div>
+                    <div>
+                        <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Warna Aktif</div>
+                        <div id="colorHexText" class="font-bold text-sm text-slate-700">#EF4444</div>
+                    </div>
+                </div>
+
+                <!-- Custom Color Picker Input -->
+                <label class="relative cursor-pointer p-2 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl shadow-sm transition" title="Pilih Warna Custom">
+                    <i data-lucide="pipette" class="w-5 h-5 text-slate-600"></i>
+                    <input type="color" id="customColorPicker" value="#EF4444" onchange="selectColor(this.value)" class="absolute opacity-0 inset-0 w-full h-full cursor-pointer">
+                </label>
+            </div>
+
+            <!-- Brush Options (Size & Opacity Sliders) -->
+            <div id="brushControls" class="space-y-3 mb-4 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                <!-- Brush Size Slider -->
+                <div>
+                    <div class="flex justify-between items-center text-xs font-semibold text-slate-600 mb-1">
+                        <span>Ukuran Kuas</span>
+                        <span id="brushSizeLabel" class="text-amber-600">12 px</span>
+                    </div>
+                    <input type="range" id="brushSizeSlider" min="2" max="60" value="12" oninput="updateBrushSize(this.value)" class="w-full accent-amber-500 cursor-pointer">
+                </div>
+
+                <!-- Brush Opacity Slider (Level 3 & 4) -->
+                <div id="opacityControlGroup" class="hidden">
+                    <div class="flex justify-between items-center text-xs font-semibold text-slate-600 mb-1">
+                        <span>Ketebalan / Opacity</span>
+                        <span id="opacityLabel" class="text-amber-600">100%</span>
+                    </div>
+                    <input type="range" id="opacitySlider" min="10" max="100" value="100" oninput="updateOpacity(this.value)" class="w-full accent-amber-500 cursor-pointer">
+                </div>
+            </div>
+
+            <!-- Color Swatches Grid -->
+            <div class="flex-1 flex flex-col">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Palet Warna</h3>
+                    <span id="paletteCountLabel" class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">8 Warna</span>
+                </div>
+
+                <div id="colorGrid" class="grid grid-cols-4 gap-2.5 p-1">
+                    <!-- Swatches will be generated dynamically -->
+                </div>
+            </div>
+
+            <!-- Image Carousel Selector (Fast Switching) -->
+            <div class="mt-4 pt-4 border-t border-slate-100">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Pilih Gambar</span>
+                    <button onclick="openLevelModal()" class="text-xs text-amber-600 hover:text-amber-700 font-semibold">Lihat Semua</button>
+                </div>
+                <div id="miniThumbnailList" class="flex gap-2 overflow-x-auto pb-2">
+                    <!-- Mini thumbnails inserted dynamically -->
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- ================= LEVEL & IMAGE SELECTOR MODAL ================= -->
+    <div id="levelModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-opacity duration-200 opacity-0 pointer-events-none">
+        <div class="bg-white w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-pop">
+            
+            <!-- Modal Header -->
+            <div class="bg-gradient-to-r from-amber-400 via-rose-500 to-purple-600 text-white p-5 flex justify-between items-center">
+                <div>
+                    <h2 class="text-xl font-bold flex items-center gap-2">
+                        <i data-lucide="sparkles" class="w-6 h-6"></i>
+                        Pilih Tingkat Kesulitan & Gambar
+                    </h2>
+                    <p class="text-xs text-amber-100 mt-1">Disesuaikan khusus untuk jenjang usia TK, SD, SMP, hingga SMA</p>
+                </div>
+                <button onclick="closeLevelModal()" class="p-2 bg-white/20 hover:bg-white/30 rounded-2xl transition">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            <!-- Modal Level Tabs -->
+            <div class="flex border-b border-slate-200 bg-slate-50 px-4 pt-2 overflow-x-auto gap-2">
+                <button onclick="switchLevelTab(1)" id="tabLevel1" class="level-tab-btn flex items-center gap-2 px-4 py-3 border-b-2 font-bold text-sm transition text-amber-600 border-amber-500">
+                    <span>🎈 Level 1: TK / PAUD</span>
+                </button>
+                <button onclick="switchLevelTab(2)" id="tabLevel2" class="level-tab-btn flex items-center gap-2 px-4 py-3 border-b-2 font-bold text-sm transition text-slate-500 border-transparent hover:text-slate-700">
+                    <span>⭐ Level 2: SD</span>
+                </button>
+                <button onclick="switchLevelTab(3)" id="tabLevel3" class="level-tab-btn flex items-center gap-2 px-4 py-3 border-b-2 font-bold text-sm transition text-slate-500 border-transparent hover:text-slate-700">
+                    <span>🚀 Level 3: SMP</span>
+                </button>
+                <button onclick="switchLevelTab(4)" id="tabLevel4" class="level-tab-btn flex items-center gap-2 px-4 py-3 border-b-2 font-bold text-sm transition text-slate-500 border-transparent hover:text-slate-700">
+                    <span>👑 Level 4: SMA</span>
+                </button>
+            </div>
+
+            <!-- Level Description Banner -->
+            <div id="levelDescriptionBox" class="bg-amber-50 border-b border-amber-100 px-6 py-3 text-xs text-amber-800 flex items-center gap-3">
+                <i data-lucide="info" class="w-5 h-5 text-amber-600 flex-shrink-0"></i>
+                <span id="levelDescText">Garis outline tebal, area fill besar, tombol warna simpel & ramah anak.</span>
+            </div>
+
+            <!-- Image Grid Container -->
+            <div class="p-6 overflow-y-auto flex-1">
+                <div id="modalImageGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                    <!-- Cards dynamically rendered -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= CELEBRATION MODAL ================= -->
+    <div id="celebrationModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity">
+        <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-sm w-full text-center shadow-2xl transform transition-transform scale-95 animate-pop">
+            <div class="w-20 h-20 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl shadow-inner">
+                🏆
+            </div>
+            <h3 class="text-2xl font-bold text-slate-800 mb-2">Karya Luar Biasa!</h3>
+            <p class="text-sm text-slate-500 mb-6">Kamu telah berhasil mewarnai gambar kartun ini dengan sangat indah!</p>
+            
+            <div class="space-y-3">
+                <button onclick="downloadImage(); closeCelebrationModal();" class="w-full bg-sky-500 hover:bg-sky-600 text-white font-bold py-3 px-4 rounded-2xl shadow-md transition flex items-center justify-center gap-2">
+                    <i data-lucide="download" class="w-5 h-5"></i>
+                    Simpan Gambar PNG
+                </button>
+                <button onclick="closeCelebrationModal(); openLevelModal();" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-4 rounded-2xl shadow-md transition flex items-center justify-center gap-2">
+                    <i data-lucide="image" class="w-5 h-5"></i>
+                    Pilih Gambar Lain
+                </button>
+                <button onclick="closeCelebrationModal()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 px-4 rounded-2xl transition">
+                    Lanjutkan Mewarnai
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= JAVASCRIPT LOGIC ENGINE ================= -->
+    <script>
+        /* -------------------------------------------------------------
+           1. DATASET: 12 DRAWINGS & VECTOR OUTLINES ACROSS 4 LEVELS
+           ------------------------------------------------------------- */
+        const LEVELS_DATA = {
+            1: {
+                name: "TK / PAUD",
+                icon: "🎈",
+                desc: "Garis outline tebal, area fill besar, tombol mudah & suara ceria untuk anak PAUD/TK.",
+                palettes: ["#EF4444", "#F97316", "#FACC15", "#22C55E", "#3B82F6", "#A855F7", "#EC4899", "#78350F", "#FFFFFF", "#000000"],
+                drawings: [
+                    {
+                        id: "l1_upin",
+                        title: "Upin & Ipin Simpel",
+                        desc: "Karakter si kembar lucu dengan senyum ceria.",
+                        strokeWidth: 7,
+                        svg: `<svg viewBox="0 0 800 800">
+                            <!-- Background star burst -->
+                            <path d="M 400,100 L 430,220 L 550,150 L 470,260 L 600,300 L 480,360 L 580,480 L 450,440 L 480,570 L 390,470 L 320,580 L 320,450 L 190,520 L 270,410 L 140,360 L 270,310 L 160,200 L 290,240 Z" stroke="#000000" stroke-width="6" fill="none" stroke-linejoin="round"/>
+                            <!-- Upin Head -->
+                            <ellipse cx="280" cy="380" rx="110" ry="120" stroke="#000000" stroke-width="8" fill="none"/>
+                            <!-- Hair strand Upin -->
+                            <path d="M 280,260 Q 290,210 310,200 Q 300,230 285,260" stroke="#000000" stroke-width="7" fill="none" stroke-linecap="round"/>
+                            <!-- Upin Eyes -->
+                            <ellipse cx="240" cy="360" rx="20" ry="28" stroke="#000000" stroke-width="7" fill="none"/>
+                            <ellipse cx="310" cy="360" rx="20" ry="28" stroke="#000000" stroke-width="7" fill="none"/>
+                            <!-- Upin Pupils -->
+                            <circle cx="245" cy="365" r="8" fill="#000000"/>
+                            <circle cx="315" cy="365" r="8" fill="#000000"/>
+                            <!-- Upin Smile -->
+                            <path d="M 230,420 Q 275,470 320,420" stroke="#000000" stroke-width="8" fill="none" stroke-linecap="round"/>
+                            <!-- Upin Shirt & U logo -->
+                            <path d="M 180,480 L 170,620 L 380,620 L 370,480 Z" stroke="#000000" stroke-width="8" fill="none" stroke-linejoin="round"/>
+                            <path d="M 255,520 L 255,570 Q 275,595 295,570 L 295,520" stroke="#000000" stroke-width="7" fill="none" stroke-linecap="round"/>
+                            
+                            <!-- Ipin Head -->
+                            <ellipse cx="520" cy="380" rx="110" ry="120" stroke="#000000" stroke-width="8" fill="none"/>
+                            <!-- Ipin Eyes -->
+                            <ellipse cx="480" cy="360" rx="20" ry="28" stroke="#000000" stroke-width="7" fill="none"/>
+                            <ellipse cx="550" cy="360" rx="20" ry="28" stroke="#000000" stroke-width="7" fill="none"/>
+                            <circle cx="485" cy="365" r="8" fill="#000000"/>
+                            <circle cx="555" cy="365" r="8" fill="#000000"/>
+                            <!-- Ipin Big Laugh Smile -->
+                            <path d="M 470,415 Q 515,475 560,415 Z" stroke="#000000" stroke-width="8" fill="none" stroke-linejoin="round"/>
+                            <!-- Ipin Shirt & I logo -->
+                            <path d="M 420,480 L 410,620 L 620,620 L 610,480 Z" stroke="#000000" stroke-width="8" fill="none" stroke-linejoin="round"/>
+                            <line x1="515" y1="520" x2="515" y2="580" stroke="#000000" stroke-width="8" stroke-linecap="round"/>
+                        </svg>`
+                    },
+                    {
+                        id: "l1_olaf",
+                        title: "Snowman Ceria",
+                        desc: "Manusia salju ramah mirip Olaf dengan hidung wortel.",
+                        strokeWidth: 7,
+                        svg: `<svg viewBox="0 0 800 800">
+                            <!-- Bottom Snowball -->
+                            <circle cx="400" cy="570" r="150" stroke="#000000" stroke-width="8" fill="none"/>
+                            <!-- Buttons on tummy -->
+                            <circle cx="400" cy="510" r="14" fill="#000000"/>
+                            <circle cx="400" cy="570" r="14" fill="#000000"/>
+                            <circle cx="400" cy="630" r="14" fill="#000000"/>
+                            <!-- Middle Snowball -->
+                            <circle cx="400" cy="360" r="105" stroke="#000000" stroke-width="8" fill="none"/>
+                            <!-- Head Snowball -->
+                            <ellipse cx="400" cy="210" rx="80" ry="75" stroke="#000000" stroke-width="8" fill="none"/>
+                            <!-- Top Hat -->
+                            <rect x="330" y="80" width="140" height="60" rx="6" stroke="#000000" stroke-width="7" fill="none"/>
+                            <line x1="300" y1="140" x2="500" y2="140" stroke="#000000" stroke-width="8" stroke-linecap="round"/>
+                            <!-- Eyes -->
+                            <circle cx="370" cy="190" r="12" stroke="#000000" stroke-width="6" fill="none"/>
+                            <circle cx="430" cy="190" r="12" stroke="#000000" stroke-width="6" fill="none"/>
+                            <circle cx="373" cy="190" r="5" fill="#000000"/>
+                            <circle cx="433" cy="190" r="5" fill="#000000"/>
+                            <!-- Carrot Nose -->
+                            <polygon points="400,205 510,220 400,225" stroke="#000000" stroke-width="7" fill="none" stroke-linejoin="round"/>
+                            <!-- Smile & Buck Tooth -->
+                            <path d="M 360,240 Q 400,275 440,240" stroke="#000000" stroke-width="7" fill="none"/>
+                            <rect x="390" y="255" width="20" height="15" stroke="#000000" stroke-width="5" fill="none"/>
+                            <!-- Twig Arms -->
+                            <path d="M 295,350 L 170,310 M 210,323 L 190,285 M 210,323 L 230,290" stroke="#000000" stroke-width="8" fill="none" stroke-linecap="round"/>
+                            <path d="M 505,350 L 630,310 M 590,323 L 610,285 M 590,323 L 570,290" stroke="#000000" stroke-width="8" fill="none" stroke-linecap="round"/>
+                            <!-- Scarf -->
+                            <path d="M 335,275 Q 400,300 465,275 L 470,300 Q 400,325 330,300 Z" stroke="#000000" stroke-width="7" fill="none"/>
+                            <rect x="420" y="300" width="35" height="90" rx="5" stroke="#000000" stroke-width="7" fill="none"/>
+                        </svg>`
+                    },
+                    {
+                        id: "l1_house",
+                        title: "Rumah & Bintang Kartun",
+                        desc: "Pemandangan rumah imut dengan matahari dan bintang.",
+                        strokeWidth: 7,
+                        svg: `<svg viewBox="0 0 800 800">
+                            <!-- Ground Line -->
+                            <line x1="50" y1="650" x2="750" y2="650" stroke="#000000" stroke-width="8" stroke-linecap="round"/>
+                            <!-- House Base -->
+                            <rect x="240" y="380" width="320" height="270" stroke="#000000" stroke-width="8" fill="none"/>
+                            <!-- Roof -->
+                            <polygon points="200,380 400,220 600,380" stroke="#000000" stroke-width="8" fill="none" stroke-linejoin="round"/>
+                            <!-- Chimney -->
+                            <polygon points="480,280 480,180 530,180 530,320" stroke="#000000" stroke-width="7" fill="none"/>
+                            <!-- Smoke circles -->
+                            <circle cx="540" cy="140" r="18" stroke="#000000" stroke-width="6" fill="none"/>
+                            <circle cx="570" cy="100" r="25" stroke="#000000" stroke-width="6" fill="none"/>
+                            <!-- Door & Knob -->
+                            <rect x="360" y="500" width="80" height="150" rx="8" stroke="#000000" stroke-width="7" fill="none"/>
+                            <circle cx="425" cy="585" r="8" stroke="#000000" stroke-width="6" fill="none"/>
+                            <!-- Windows -->
+                            <rect x="270" y="430" width="70" height="70" rx="6" stroke="#000000" stroke-width="7" fill="none"/>
+                            <line x1="305" y1="430" x2="305" y2="500" stroke="#000000" stroke-width="6"/>
+                            <line x1="270" y1="465" x2="340" y2="465" stroke="#000000" stroke-width="6"/>
+                            
+                            <rect x="460" y="430" width="70" height="70" rx="6" stroke="#000000" stroke-width="7" fill="none"/>
+                            <line x1="495" y1="430" x2="495" y2="500" stroke="#000000" stroke-width="6"/>
+                            <line x1="460" y1="465" x2="530" y2="465" stroke="#000000" stroke-width="6"/>
+                            <!-- Sun with Sunglasses -->
+                            <circle cx="150" cy="160" r="70" stroke="#000000" stroke-width="8" fill="none"/>
+                            <path d="M 110,150 L 190,150 L 180,175 Q 150,190 120,175 Z" stroke="#000000" stroke-width="7" fill="none"/>
+                            <!-- Big Star -->
+                            <polygon points="680,140 700,190 750,195 710,230 725,280 680,250 635,280 650,230 610,195 660,190" stroke="#000000" stroke-width="7" fill="none" stroke-linejoin="round"/>
+                        </svg>`
+                    }
+                ]
+            },
+            2: {
+                name: "SD",
+                icon: "⭐",
+                desc: "Detail sedang, palet 16 warna, alat ember cat & kuas dasar.",
+                palettes: ["#EF4444", "#F97316", "#FACC15", "#84CC16", "#10B981", "#06B6D4", "#3B82F6", "#6366F1", "#8B5CF6", "#D946EF", "#EC4899", "#F43F5E", "#78350F", "#94A3B8", "#FFFFFF", "#000000"],
+                drawings: [
+                    {
+                        id: "l2_lamp",
+                        title: "Lampu Ajaib & Jin Aladdin",
+                        desc: "Lampu ajaib berkilau dengan asap Jin ramah.",
+                        strokeWidth: 5,
+                        svg: `<svg viewBox="0 0 800 800">
+                            <!-- Magic Lamp Base & Body -->
+                            <ellipse cx="400" cy="670" rx="160" ry="30" stroke="#000000" stroke-width="6" fill="none"/>
+                            <path d="M 270,660 Q 230,550 350,520 L 530,520 Q 650,550 530,660 Z" stroke="#000000" stroke-width="6" fill="none"/>
+                            <!-- Spout -->
+                            <path d="M 290,540 Q 180,510 140,440 Q 160,430 220,470 L 270,510" stroke="#000000" stroke-width="6" fill="none"/>
+                            <!-- Handle -->
+                            <path d="M 520,530 Q 680,480 640,610 Q 600,660 520,640" stroke="#000000" stroke-width="6" fill="none"/>
+                            <!-- Lid & Knob -->
+                            <ellipse cx="430" cy="520" rx="50" ry="15" stroke="#000000" stroke-width="6" fill="none"/>
+                            <circle cx="430" cy="490" r="16" stroke="#000000" stroke-width="6" fill="none"/>
+                            <!-- Swirling Magic Smoke -->
+                            <path d="M 140,440 Q 100,380 160,320 Q 220,260 160,200 Q 120,150 200,100 Q 260,180 200,240 Q 300,300 180,380 Z" stroke="#000000" stroke-width="5" fill="none"/>
+                            <!-- Friendly Genie Torso emerging -->
+                            <ellipse cx="460" cy="240" rx="90" ry="100" stroke="#000000" stroke-width="6" fill="none"/>
+                            <!-- Genie Arms folded -->
+                            <path d="M 370,260 Q 460,330 550,260 Q 460,360 370,260" stroke="#000000" stroke-width="6" fill="none"/>
+                            <!-- Genie Head & Turban -->
+                            <circle cx="460" cy="140" r="55" stroke="#000000" stroke-width="6" fill="none"/>
+                            <path d="M 410,120 Q 460,60 510,120 Z" stroke="#000000" stroke-width="6" fill="none"/>
+                            <circle cx="460" cy="90" r="12" stroke="#000000" stroke-width="5" fill="none"/>
+                            <!-- Genie Eyes & Smile -->
+                            <circle cx="440" cy="135" r="7" fill="#000"/>
+                            <circle cx="480" cy="135" r="7" fill="#000"/>
+                            <path d="M 435,160 Q 460,185 485,160" stroke="#000000" stroke-width="5" fill="none"/>
+                        </svg>`
+                    },
+                    {
+                        id: "l2_frozen",
+                        title: "Istana Es Frozen",
+                        desc: "Istana megah dengan menara kristal dan kristal es.",
+                        strokeWidth: 5,
+                        svg: `<svg viewBox="0 0 800 800">
+                            <!-- Central Main Tower -->
+                            <rect x="330" y="250" width="140" height="420" stroke="#000000" stroke-width="6" fill="none"/>
+                            <polygon points="330,250 400,90 470,250" stroke="#000000" stroke-width="6" fill="none"/>
+                            <!-- Side Left Tower -->
+                            <rect x="210" y="360" width="100" height="310" stroke="#000000" stroke-width="6" fill="none"/>
+                            <polygon points="210,360 260,210 310,360" stroke="#000000" stroke-width="6" fill="none"/>
+                            <!-- Side Right Tower -->
+                            <rect x="490" y="360" width="100" height="310" stroke="#000000" stroke-width="6" fill="none"/>
+                            <polygon points="490,360 540,210 590,360" stroke="#000000" stroke-width="6" fill="none"/>
+                            <!-- Outer Spires -->
+                            <polygon points="120,670 160,460 200,670" stroke="#000000" stroke-width="6" fill="none"/>
+                            <polygon points="600,670 640,460 680,670" stroke="#000000" stroke-width="6" fill="none"/>
+                            <!-- Grand Arched Doorway -->
+                            <path d="M 360,670 L 360,540 Q 400,490 440,540 L 440,670 Z" stroke="#000000" stroke-width="6" fill="none"/>
+                            <!-- Giant Snowflake emblem above door -->
+                            <g stroke="#000000" stroke-width="5" fill="none">
+                                <line x1="400" y1="330" x2="400" y2="430"/>
+                                <line x1="350" y1="380" x2="450" y2="380"/>
+                                <line x1="365" y1="345" x2="435" y2="415"/>
+                                <line x1="365" y1="415" x2="435" y2="345"/>
+                                <circle cx="400" cy="380" r="16" stroke-width="5"/>
+                            </g>
+                        </svg>`
+                    },
+                    {
+                        id: "l2_adventure",
+                        title: "Upin Ipin Berpetualang",
+                        desc: "Si kembar di hutan safari bersama dinosaurus imut.",
+                        strokeWidth: 5,
+                        svg: `<svg viewBox="0 0 800 800">
+                            <!-- Background Mountains & Sun -->
+                            <polygon points="50,550 250,280 450,550" stroke="#000000" stroke-width="6" fill="none"/>
+                            <polygon points="350,550 550,220 750,550" stroke="#000000" stroke-width="6" fill="none"/>
+                            <circle cx="400" cy="180" r="60" stroke="#000000" stroke-width="6" fill="none"/>
+                            <!-- Palm Tree Trunk & Leaves -->
+                            <path d="M 120,650 Q 150,450 110,300" stroke="#000000" stroke-width="8" fill="none"/>
+                            <path d="M 110,300 Q 50,250 20,280 M 110,300 Q 130,220 180,240 M 110,300 Q 200,280 210,340" stroke="#000000" stroke-width="6" fill="none"/>
+                            <!-- Cute Dino Friend -->
+                            <path d="M 520,650 Q 500,480 580,450 Q 640,430 680,480 Q 720,530 680,650 Z" stroke="#000000" stroke-width="6" fill="none"/>
+                            <circle cx="610" cy="470" r="8" fill="#000"/>
+                            <!-- Upin in Safari Hat -->
+                            <circle cx="300" cy="480" r="65" stroke="#000000" stroke-width="6" fill="none"/>
+                            <!-- Safari Hat -->
+                            <path d="M 220,470 Q 300,400 380,470 Z" stroke="#000000" stroke-width="6" fill="none"/>
+                            <ellipse cx="300" cy="470" rx="90" ry="18" stroke="#000000" stroke-width="6" fill="none"/>
+                            <!-- Shirt & Shorts -->
+                            <rect x="250" y="545" width="100" height="105" rx="10" stroke="#000000" stroke-width="6" fill="none"/>
+                        </svg>`
+                    }
+                ]
+            },
+            3: {
+                name: "SMP",
+                icon: "🚀",
+                desc: "Detail tinggi, alat Kuas fleksibel, Color Picker custom, Undo/Redo & Zoom/Pan.",
+                palettes: ["#F87171", "#FB923C", "#FBBF24", "#A3E635", "#34D399", "#22D3EE", "#38BDF8", "#60A5FA", "#818CF8", "#A78BFA", "#C084FC", "#E879F9", "#F472B6", "#FB7185", "#D97706", "#059669", "#2563EB", "#7C3AED", "#DB2777", "#475569", "#0F172A", "#FFFFFF"],
+                drawings: [
+                    {
+                        id: "l3_carpet",
+                        title: "Karpet Terbang Aladdin",
+                        desc: "Karpet ajaib dengan rumbai dan lanskap kubah istana malam.",
+                        strokeWidth: 4,
+                        svg: `<svg viewBox="0 0 800 800">
+                            <!-- Starry Night Crescent Moon -->
+                            <path d="M 620,100 A 90,90 0 1 0 720,240 A 110,110 0 1 1 620,100 Z" stroke="#000000" stroke-width="5" fill="none"/>
+                            <!-- Distant Palace Domes -->
+                            <path d="M 50,650 L 50,550 Q 100,480 150,550 L 150,650 M 150,650 L 150,500 Q 220,400 290,500 L 290,650 M 500,650 L 500,520 Q 570,440 640,520 L 640,650" stroke="#000000" stroke-width="5" fill="none"/>
+                            <!-- Flying Magic Carpet Base -->
+                            <path d="M 160,320 Q 400,200 640,340 Q 480,480 200,440 Z" stroke="#000000" stroke-width="6" fill="none"/>
+                            <!-- Carpet Inner Border Pattern -->
+                            <path d="M 190,335 Q 400,230 610,350 Q 470,450 220,420 Z" stroke="#000000" stroke-width="4" fill="none"/>
+                            <!-- Intricate Geometric Diamond Motifs inside carpet -->
+                            <polygon points="280,330 320,310 360,330 320,350" stroke="#000000" stroke-width="4" fill="none"/>
+                            <polygon points="380,330 420,310 460,330 420,350" stroke="#000000" stroke-width="4" fill="none"/>
+                            <polygon points="480,340 520,320 560,340 520,360" stroke="#000000" stroke-width="4" fill="none"/>
+                            <!-- Tassels on Corners -->
+                            <path d="M 160,320 L 130,300 M 160,320 L 130,320 M 160,320 L 140,340" stroke="#000000" stroke-width="4"/>
+                            <path d="M 640,340 L 670,320 M 640,340 L 670,340 M 640,340 L 660,360" stroke="#000000" stroke-width="4"/>
+                            <path d="M 200,440 L 180,470 M 200,440 L 200,470 M 200,440 L 220,470" stroke="#000000" stroke-width="4"/>
+                        </svg>`
+                    },
+                    {
+                        id: "l3_ice_princess",
+                        title: "Putri Es & Kristal",
+                        desc: "Potret Putri Es dengan rambut kepang dan mahkota mahakarya.",
+                        strokeWidth: 4,
+                        svg: `<svg viewBox="0 0 800 800">
+                            <!-- Princess Head & Jaw Outline -->
+                            <path d="M 310,240 Q 300,420 400,470 Q 500,420 490,240 Z" stroke="#000000" stroke-width="5" fill="none"/>
+                            <!-- Tiara / Crown -->
+                            <polygon points="320,240 360,160 400,220 440,160 480,240" stroke="#000000" stroke-width="5" fill="none"/>
+                            <circle cx="360" cy="180" r="8" fill="#000"/>
+                            <circle cx="440" cy="180" r="8" fill="#000"/>
+                            <circle cx="400" cy="240" r="10" stroke="#000" stroke-width="4" fill="none"/>
+                            <!-- Long Braided Hair flowing left -->
+                            <path d="M 320,240 Q 220,300 240,420 Q 260,500 200,650" stroke="#000000" stroke-width="5" fill="none"/>
+                            <path d="M 280,280 Q 200,340 220,440 Q 230,520 170,660" stroke="#000000" stroke-width="4" fill="none"/>
+                            <!-- Eyes & Lips -->
+                            <ellipse cx="360" cy="330" rx="22" ry="14" stroke="#000000" stroke-width="4" fill="none"/>
+                            <ellipse cx="440" cy="330" rx="22" ry="14" stroke="#000000" stroke-width="4" fill="none"/>
+                            <circle cx="360" cy="330" r="8" fill="#000"/>
+                            <circle cx="440" cy="330" r="8" fill="#000"/>
+                            <path d="M 370,410 Q 400,435 430,410 Q 400,420 370,410" stroke="#000000" stroke-width="4" fill="none"/>
+                            <!-- Gown & Collar -->
+                            <path d="M 340,465 L 260,650 M 460,465 L 540,650" stroke="#000000" stroke-width="5" fill="none"/>
+                            <!-- Snowflake Background Accents -->
+                            <g stroke="#000000" stroke-width="4" fill="none">
+                                <line x1="600" y1="180" x2="600" y2="280"/><line x1="550" y1="230" x2="650" y2="230"/>
+                                <line x1="180" y1="140" x2="180" y2="220"/><line x1="140" y1="180" x2="220" y2="180"/>
+                            </g>
+                        </svg>`
+                    },
+                    {
+                        id: "l3_anime_hero",
+                        title: "Anime Fantasy Hero",
+                        desc: "Karakter pahlawan anime dengan rambut jabrik dan pedang.",
+                        strokeWidth: 4,
+                        svg: `<svg viewBox="0 0 800 800">
+                            <!-- Spiky Anime Hair -->
+                            <path d="M 260,300 L 220,200 L 300,240 L 340,140 L 400,220 L 460,130 L 490,230 L 570,180 L 530,300 Z" stroke="#000000" stroke-width="5" fill="none" stroke-linejoin="round"/>
+                            <!-- Headband -->
+                            <rect x="280" y="270" width="230" height="45" rx="5" stroke="#000000" stroke-width="5" fill="none"/>
+                            <rect x="360" y="277" width="70" height="31" rx="4" stroke="#000000" stroke-width="4" fill="none"/>
+                            <!-- Face Contour -->
+                            <polygon points="290,315 400,450 500,315" stroke="#000000" stroke-width="5" fill="none" stroke-linejoin="round"/>
+                            <!-- Anime Eyes -->
+                            <polygon points="320,340 370,340 360,370 330,370" stroke="#000000" stroke-width="4" fill="none"/>
+                            <polygon points="420,340 470,340 460,370 430,370" stroke="#000000" stroke-width="4" fill="none"/>
+                            <circle cx="345" cy="355" r="5" fill="#000"/>
+                            <circle cx="445" cy="355" r="5" fill="#000"/>
+                            <!-- Armor Shoulders & Cape -->
+                            <path d="M 220,470 L 320,440 L 400,480 L 480,440 L 580,470 L 600,650 L 200,650 Z" stroke="#000000" stroke-width="5" fill="none"/>
+                            <!-- Broadsword Hilt Held in Hand -->
+                            <rect x="610" y="250" width="30" height="300" rx="5" stroke="#000000" stroke-width="5" fill="none"/>
+                            <polygon points="570,360 680,360 625,320" stroke="#000000" stroke-width="5" fill="none"/>
+                        </svg>`
+                    }
+                ]
+            },
+            4: {
+                name: "SMA",
+                icon: "👑",
+                desc: "Mandala & Line Art kompleks, opacity kuas, palet warna pro, detail tinggi.",
+                palettes: ["#1E293B", "#334155", "#475569", "#64748B", "#94A3B8", "#F87171", "#EF4444", "#DC2626", "#F97316", "#EA580C", "#FACC15", "#EAB308", "#84CC16", "#65A30D", "#10B981", "#059669", "#06B6D4", "#0891B2", "#3B82F6", "#2563EB", "#6366F1", "#4F46E5", "#8B5CF6", "#7C3AED", "#EC4899", "#DB2777", "#FFFFFF"],
+                drawings: [
+                    {
+                        id: "l4_mandala",
+                        title: "Mandala Kartun Rumit",
+                        desc: "Pola simetris abstrak dengan detail kelopak bunga & geometris.",
+                        strokeWidth: 3,
+                        svg: `<svg viewBox="0 0 800 800">
+                            <!-- Outer Ring -->
+                            <circle cx="400" cy="400" r="350" stroke="#000000" stroke-width="4" fill="none"/>
+                            <circle cx="400" cy="400" r="300" stroke="#000000" stroke-width="3" fill="none"/>
+                            <circle cx="400" cy="400" r="220" stroke="#000000" stroke-width="3" fill="none"/>
+                            <circle cx="400" cy="400" r="140" stroke="#000000" stroke-width="3" fill="none"/>
+                            <circle cx="400" cy="400" r="60" stroke="#000000" stroke-width="4" fill="none"/>
+                            <!-- 8 Radial Petals -->
+                            <path d="M 400,50 Q 320,220 400,260 Q 480,220 400,50 Z" stroke="#000000" stroke-width="3" fill="none"/>
+                            <path d="M 400,750 Q 320,580 400,540 Q 480,580 400,750 Z" stroke="#000000" stroke-width="3" fill="none"/>
+                            <path d="M 50,400 Q 220,320 260,400 Q 220,480 50,400 Z" stroke="#000000" stroke-width="3" fill="none"/>
+                            <path d="M 750,400 Q 580,320 540,400 Q 580,480 750,400 Z" stroke="#000000" stroke-width="3" fill="none"/>
+                            <!-- Diagonal Petals -->
+                            <path d="M 150,150 Q 280,250 310,310 Q 250,280 150,150 Z" stroke="#000000" stroke-width="3" fill="none"/>
+                            <path d="M 650,150 Q 520,250 490,310 Q 550,280 650,150 Z" stroke="#000000" stroke-width="3" fill="none"/>
+                            <path d="M 150,650 Q 280,550 310,490 Q 250,520 150,650 Z" stroke="#000000" stroke-width="3" fill="none"/>
+                            <path d="M 650,650 Q 520,550 490,490 Q 550,520 650,650 Z" stroke="#000000" stroke-width="3" fill="none"/>
+                            <!-- Inner Concentric Ornaments -->
+                            <circle cx="400" cy="150" r="20" stroke="#000" stroke-width="3" fill="none"/>
+                            <circle cx="400" cy="650" r="20" stroke="#000" stroke-width="3" fill="none"/>
+                            <circle cx="150" cy="400" r="20" stroke="#000" stroke-width="3" fill="none"/>
+                            <circle cx="750" cy="400" r="20" stroke="#000" stroke-width="3" fill="none"/>
+                        </svg>`
+                    },
+                    {
+                        id: "l4_fantasy_city",
+                        title: "Kota Anime Fantasy",
+                        desc: "Pemandangan kota bertingkat dengan pulau melayang dan arsitektur rumit.",
+                        strokeWidth: 3,
+                        svg: `<svg viewBox="0 0 800 800">
+                            <!-- Floating Island Base -->
+                            <path d="M 100,500 Q 400,450 700,500 Q 550,720 400,750 Q 250,720 100,500 Z" stroke="#000000" stroke-width="4" fill="none"/>
+                            <!-- Waterfalls dripping off island -->
+                            <path d="M 320,600 L 310,780 M 340,610 L 335,760 M 480,590 L 490,770" stroke="#000000" stroke-width="3"/>
+                            <!-- Spires & Fantasy Towers -->
+                            <rect x="180" y="280" width="70" height="230" stroke="#000000" stroke-width="3" fill="none"/>
+                            <polygon points="180,280 215,140 250,280" stroke="#000000" stroke-width="3" fill="none"/>
+                            
+                            <rect x="330" y="200" width="140" height="300" stroke="#000000" stroke-width="4" fill="none"/>
+                            <polygon points="330,200 400,60 470,200" stroke="#000000" stroke-width="4" fill="none"/>
+                            
+                            <rect x="530" y="310" width="80" height="200" stroke="#000000" stroke-width="3" fill="none"/>
+                            <polygon points="530,310 570,180 610,310" stroke="#000000" stroke-width="3" fill="none"/>
+                            <!-- Arched Bridges between towers -->
+                            <path d="M 250,350 Q 290,320 330,350" stroke="#000000" stroke-width="3" fill="none"/>
+                            <path d="M 470,380 Q 500,350 530,380" stroke="#000000" stroke-width="3" fill="none"/>
+                            <!-- Sun & Floating Airship Ring -->
+                            <circle cx="400" cy="180" r="90" stroke="#000000" stroke-width="3" stroke-dasharray="8 6" fill="none"/>
+                        </svg>`
+                    },
+                    {
+                        id: "l4_portrait_detail",
+                        title: "Portret Karakter Detail",
+                        desc: "Portret anime estetik berhias bunga mekar dan kupu-kupu.",
+                        strokeWidth: 3,
+                        svg: `<svg viewBox="0 0 800 800">
+                            <!-- Detailed Hair Locks -->
+                            <path d="M 240,300 Q 200,120 400,100 Q 600,120 560,300 Q 620,480 540,650 M 240,300 Q 180,480 260,650" stroke="#000000" stroke-width="4" fill="none"/>
+                            <!-- Face Contour -->
+                            <path d="M 310,280 Q 300,440 400,480 Q 500,440 490,280" stroke="#000000" stroke-width="4" fill="none"/>
+                            <!-- Ornate Eyes with lash details -->
+                            <path d="M 330,320 Q 360,305 380,325 M 330,320 Q 355,340 380,325" stroke="#000000" stroke-width="3" fill="none"/>
+                            <circle cx="355" cy="323" r="10" stroke="#000" stroke-width="3" fill="none"/>
+                            <path d="M 420,325 Q 445,305 470,320 M 420,325 Q 445,340 470,320" stroke="#000000" stroke-width="3" fill="none"/>
+                            <circle cx="445" cy="323" r="10" stroke="#000" stroke-width="3" fill="none"/>
+                            <!-- Flower Wreath Crown -->
+                            <circle cx="320" cy="180" r="22" stroke="#000" stroke-width="3" fill="none"/>
+                            <circle cx="360" cy="150" r="25" stroke="#000" stroke-width="3" fill="none"/>
+                            <circle cx="410" cy="140" r="28" stroke="#000" stroke-width="3" fill="none"/>
+                            <circle cx="460" cy="150" r="25" stroke="#000" stroke-width="3" fill="none"/>
+                            <!-- Butterfly Accent -->
+                            <path d="M 600,220 Q 640,180 650,230 Q 610,240 600,220 Q 650,260 620,280 Z" stroke="#000000" stroke-width="3" fill="none"/>
+                            <!-- Lace Collar & Dress -->
+                            <path d="M 340,480 L 280,650 M 460,480 L 520,650" stroke="#000000" stroke-width="4" fill="none"/>
+                        </svg>`
+                    }
+                ]
+            }
+        };
+
+        /* -------------------------------------------------------------
+           2. GLOBAL STATE & APP VARIABLES
+           ------------------------------------------------------------- */
+        let currentLevel = 1;
+        let currentDrawingIndex = 0;
+        let currentTool = 'fill'; // 'fill', 'brush', 'eraser', 'pan'
+        let currentColor = '#EF4444';
+        let currentBrushSize = 12;
+        let currentOpacity = 1.0;
+        let soundEnabled = true;
+
+        // Zoom / Pan State
+        let scale = 1.0;
+        let panX = 0;
+        let panY = 0;
+        let isPanning = false;
+        let startPanX = 0;
+        let startPanY = 0;
+
+        // Canvas Layers
+        const mainCanvas = document.getElementById('mainCanvas');
+        const mainCtx = mainCanvas.getContext('2d');
+
+        // Offscreen Canvases (Dual-Layer Engine)
+        const paintCanvas = document.createElement('canvas');
+        paintCanvas.width = 800;
+        paintCanvas.height = 800;
+        const paintCtx = paintCanvas.getContext('2d');
+
+        const outlineCanvas = document.createElement('canvas');
+        outlineCanvas.width = 800;
+        outlineCanvas.height = 800;
+        const outlineCtx = outlineCanvas.getContext('2d');
+
+        // History Stack
+        let historyStack = [];
+        let historyStep = -1;
+        const MAX_HISTORY = 20;
+
+        // Web Audio API Context
+        let audioCtx = null;
+
+        /* -------------------------------------------------------------
+           3. AUDIO SYNTHESIZER ENGINE (Web Audio API)
+           ------------------------------------------------------------- */
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            initAudio();
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'click') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(450, now);
+                osc.frequency.exponentialRampToValueAtTime(850, now + 0.06);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.06);
+                osc.start(now);
+                osc.stop(now + 0.06);
+            } else if (type === 'fill') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(260, now);
+                osc.frequency.exponentialRampToValueAtTime(520, now + 0.12);
+                gain.gain.setValueAtTime(0.25, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.12);
+                osc.start(now);
+                osc.stop(now + 0.12);
+            } else if (type === 'brush') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(300, now);
+                gain.gain.setValueAtTime(0.03, now);
+                gain.gain.linearRampToValueAtTime(0.001, now + 0.04);
+                osc.start(now);
+                osc.stop(now + 0.04);
+            } else if (type === 'erase') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(180, now);
+                osc.frequency.linearRampToValueAtTime(90, now + 0.08);
+                gain.gain.setValueAtTime(0.08, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
+                osc.start(now);
+                osc.stop(now + 0.08);
+            } else if (type === 'victory') {
+                const notes = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99];
+                notes.forEach((freq, i) => {
+                    const noteOsc = audioCtx.createOscillator();
+                    const noteGain = audioCtx.createGain();
+                    noteOsc.type = 'sine';
+                    noteOsc.frequency.setValueAtTime(freq, now + i * 0.07);
+                    noteGain.gain.setValueAtTime(0.15, now + i * 0.07);
+                    noteGain.gain.linearRampToValueAtTime(0.01, now + i * 0.07 + 0.25);
+                    noteOsc.connect(noteGain);
+                    noteGain.connect(audioCtx.destination);
+                    noteOsc.start(now + i * 0.07);
+                    noteOsc.stop(now + i * 0.07 + 0.25);
+                });
+            }
+        }
+
+        function toggleAudio() {
+            soundEnabled = !soundEnabled;
+            const icon = document.getElementById('audioIcon');
+            if (soundEnabled) {
+                icon.setAttribute('data-lucide', 'volume-2');
+                showToast('Suara Diaktifkan 🔊');
+            } else {
+                icon.setAttribute('data-lucide', 'volume-x');
+                showToast('Suara Dimatikan 🔇');
+            }
+            lucide.createIcons();
+        }
+
+        /* -------------------------------------------------------------
+           4. DRAWING & VECTOR OUTLINE LOADING ENGINE
+           ------------------------------------------------------------- */
+        function loadCurrentDrawing() {
+            const levelData = LEVELS_DATA[currentLevel];
+            const drawing = levelData.drawings[currentDrawingIndex];
+
+            // 1. Clear Paint & Outline Canvases
+            paintCtx.clearRect(0, 0, 800, 800);
+            outlineCtx.clearRect(0, 0, 800, 800);
+
+            // Fill Paint Canvas with White Base
+            paintCtx.fillStyle = '#FFFFFF';
+            paintCtx.fillRect(0, 0, 800, 800);
+
+            // 2. Render SVG string to Image and draw onto outlineCanvas
+            const img = new Image();
+            const svgBlob = new Blob([drawing.svg], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(svgBlob);
+
+            img.onload = () => {
+                outlineCtx.drawImage(img, 0, 0, 800, 800);
+                URL.revokeObjectURL(url);
+                renderComposite();
+                
+                // Clear and initialize history stack
+                historyStack = [];
+                historyStep = -1;
+                saveState();
+            };
+            img.src = url;
+
+            // 3. Update UI Badges & Controls
+            document.getElementById('badgeLevelIcon').innerText = levelData.icon;
+            document.getElementById('badgeLevelText').innerText = levelData.name;
+            
+            // Adjust tool controls based on level complexity
+            const opacityGroup = document.getElementById('opacityControlGroup');
+            const panBtn = document.getElementById('toolPan');
+            const zoomToolbar = document.getElementById('zoomToolbar');
+
+            if (currentLevel >= 3) {
+                opacityGroup.classList.remove('hidden');
+                panBtn.classList.remove('hidden');
+                zoomToolbar.classList.remove('hidden');
+            } else {
+                opacityGroup.classList.add('hidden');
+                panBtn.classList.add('hidden');
+                zoomToolbar.classList.add('hidden');
+                resetZoom();
+            }
+
+            renderPaletteSwatches();
+            renderMiniThumbnails();
+        }
+
+        // Composite Drawing (Paint Layer + Crisp Outline Layer rendered together)
+        function renderComposite() {
+            mainCtx.clearRect(0, 0, 800, 800);
+            mainCtx.drawImage(paintCanvas, 0, 0);
+            mainCtx.drawImage(outlineCanvas, 0, 0);
+        }
+
+        /* -------------------------------------------------------------
+           5. FAST 32-BIT SCANLINE FLOOD FILL ALGORITHM
+           ------------------------------------------------------------- */
+        function hexToRgba(hex, alpha = 1.0) {
+            let c = hex.replace('#', '');
+            if (c.length === 3) c = c.split('').map(x => x + x).join('');
+            const num = parseInt(c, 16);
+            return {
+                r: (num >> 16) & 255,
+                g: (num >> 8) & 255,
+                b: num & 255,
+                a: Math.round(alpha * 255)
+            };
+        }
+
+        function floodFill(startX, startY, hexColor) {
+            if (startX < 0 || startX >= 800 || startY < 0 || startY >= 800) return;
+
+            const paintData = paintCtx.getImageData(0, 0, 800, 800);
+            const outlineData = outlineCtx.getImageData(0, 0, 800, 800);
+
+            const paint32 = new Uint32Array(paintData.data.buffer);
+            const outline32 = new Uint32Array(outlineData.data.buffer);
+
+            const startIndex = startY * 800 + startX;
+            const targetColor = paint32[startIndex];
+
+            const rgba = hexToRgba(hexColor, currentOpacity);
+            // 32-bit ABGR format for HTML Canvas Uint32Array (Little Endian)
+            const fillColor32 = (rgba.a << 24) | (rgba.b << 16) | (rgba.g << 8) | rgba.r;
+
+            if (targetColor === fillColor32) return;
+
+            const isFillable = (idx) => {
+                // Check vector outline layer: if dark black stroke exists here, stop fill
+                const outlinePixel = outline32[idx];
+                const alpha = (outlinePixel >> 24) & 0xff;
+                const r = outlinePixel & 0xff;
+                const g = (outlinePixel >> 8) & 0xff;
+                const b = (outlinePixel >> 16) & 0xff;
+
+                // Black line threshold check
+                if (alpha > 120 && (r + g + b) / 3 < 140) {
+                    return false;
+                }
+                return paint32[idx] === targetColor;
+            };
+
+            const queue = [[startX, startY]];
+
+            while (queue.length > 0) {
+                const [x, y] = queue.pop();
+                let curY = y;
+
+                while (curY >= 0 && isFillable(curY * 800 + x)) {
+                    curY--;
+                }
+                curY++;
+
+                let reachLeft = false;
+                let reachRight = false;
+
+                while (curY < 800 && isFillable(curY * 800 + x)) {
+                    const idx = curY * 800 + x;
+                    paint32[idx] = fillColor32;
+
+                    if (x > 0) {
+                        if (isFillable(idx - 1)) {
+                            if (!reachLeft) {
+                                queue.push([x - 1, curY]);
+                                reachLeft = true;
+                            }
+                        } else if (reachLeft) {
+                            reachLeft = false;
+                        }
+                    }
+
+                    if (x < 799) {
+                        if (isFillable(idx + 1)) {
+                            if (!reachRight) {
+                                queue.push([x + 1, curY]);
+                                reachRight = true;
+                            }
+                        } else if (reachRight) {
+                            reachRight = false;
+                        }
+                    }
+                    curY++;
+                }
+            }
+
+            paintCtx.putImageData(paintData, 0, 0);
+            renderComposite();
+            saveState();
+            playSound('fill');
+        }
+
+        /* -------------------------------------------------------------
+           6. INTERACTIVE DRAWING & CANVAS EVENT LISTENERS
+           ------------------------------------------------------------- */
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+
+        function getCanvasCoords(e) {
+            const rect = mainCanvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            const scaleX = mainCanvas.width / rect.width;
+            const scaleY = mainCanvas.height / rect.height;
+
+            return {
+                x: Math.floor((clientX - rect.left) * scaleX),
+                y: Math.floor((clientY - rect.top) * scaleY)
+            };
+        }
+
+        function handlePointerDown(e) {
+            if (currentTool === 'pan') {
+                isPanning = true;
+                startPanX = (e.touches ? e.touches[0].clientX : e.clientX) - panX;
+                startPanY = (e.touches ? e.touches[0].clientY : e.clientY) - panY;
+                return;
+            }
+
+            const { x, y } = getCanvasCoords(e);
+
+            if (currentTool === 'fill') {
+                floodFill(x, y, currentColor);
+            } else if (currentTool === 'brush' || currentTool === 'eraser') {
+                isDrawing = true;
+                lastX = x;
+                lastY = y;
+                drawStroke(x, y, false);
+            }
+        }
+
+        function handlePointerMove(e) {
+            if (isPanning) {
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                panX = clientX - startPanX;
+                panY = clientY - startPanY;
+                applyTransform();
+                return;
+            }
+
+            if (!isDrawing) return;
+            const { x, y } = getCanvasCoords(e);
+            drawStroke(x, y, true);
+            lastX = x;
+            lastY = y;
+        }
+
+        function handlePointerUp() {
+            if (isPanning) {
+                isPanning = false;
+            }
+            if (isDrawing) {
+                isDrawing = false;
+                renderComposite();
+                saveState();
+            }
+        }
+
+        function drawStroke(x, y, isMoving) {
+            paintCtx.save();
+            paintCtx.lineCap = 'round';
+            paintCtx.lineJoin = 'round';
+            paintCtx.lineWidth = currentBrushSize;
+
+            if (currentTool === 'eraser') {
+                paintCtx.globalCompositeOperation = 'source-over';
+                paintCtx.strokeStyle = '#FFFFFF';
+                playSound('erase');
+            } else {
+                paintCtx.globalCompositeOperation = 'source-over';
+                paintCtx.globalAlpha = currentOpacity;
+                paintCtx.strokeStyle = currentColor;
+                playSound('brush');
+            }
+
+            paintCtx.beginPath();
+            if (isMoving) {
+                paintCtx.moveTo(lastX, lastY);
+            } else {
+                paintCtx.moveTo(x - 0.1, y);
+            }
+            paintCtx.lineTo(x, y);
+            paintCtx.stroke();
+            paintCtx.restore();
+
+            renderComposite();
+        }
+
+        // Attach Mouse & Touch Listeners
+        mainCanvas.addEventListener('mousedown', handlePointerDown);
+        mainCanvas.addEventListener('mousemove', handlePointerMove);
+        window.addEventListener('mouseup', handlePointerUp);
+
+        mainCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); handlePointerDown(e); }, { passive: false });
+        mainCanvas.addEventListener('touchmove', (e) => { e.preventDefault(); handlePointerMove(e); }, { passive: false });
+        window.addEventListener('touchend', handlePointerUp);
+
+        /* -------------------------------------------------------------
+           7. ZOOM & PAN ENGINE
+           ------------------------------------------------------------- */
+        const canvasContainer = document.getElementById('canvasContainer');
+
+        function applyTransform() {
+            canvasContainer.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+            document.getElementById('zoomLabel').innerText = `${Math.round(scale * 100)}%`;
+        }
+
+        function zoomIn() {
+            if (scale < 3.0) {
+                scale += 0.25;
+                applyTransform();
+                playSound('click');
+            }
+        }
+
+        function zoomOut() {
+            if (scale > 0.6) {
+                scale -= 0.25;
+                applyTransform();
+                playSound('click');
+            }
+        }
+
+        function resetZoom() {
+            scale = 1.0;
+            panX = 0;
+            panY = 0;
+            applyTransform();
+        }
+
+        /* -------------------------------------------------------------
+           8. UNDO / REDO HISTORY ENGINE
+           ------------------------------------------------------------- */
+        function saveState() {
+            if (historyStep < historyStack.length - 1) {
+                historyStack = historyStack.slice(0, historyStep + 1);
+            }
+            historyStack.push(paintCtx.getImageData(0, 0, 800, 800));
+            if (historyStack.length > MAX_HISTORY) {
+                historyStack.shift();
+            } else {
+                historyStep++;
+            }
+            updateHistoryButtons();
+        }
+
+        function undo() {
+            if (historyStep > 0) {
+                historyStep--;
+                paintCtx.putImageData(historyStack[historyStep], 0, 0);
+                renderComposite();
+                updateHistoryButtons();
+                playSound('click');
+            }
+        }
+
+        function redo() {
+            if (historyStep < historyStack.length - 1) {
+                historyStep++;
+                paintCtx.putImageData(historyStack[historyStep], 0, 0);
+                renderComposite();
+                updateHistoryButtons();
+                playSound('click');
+            }
+        }
+
+        function updateHistoryButtons() {
+            document.getElementById('undoBtn').disabled = (historyStep <= 0);
+            document.getElementById('redoBtn').disabled = (historyStep >= historyStack.length - 1);
+        }
+
+        function resetCanvas() {
+            paintCtx.fillStyle = '#FFFFFF';
+            paintCtx.fillRect(0, 0, 800, 800);
+            renderComposite();
+            saveState();
+            showToast('Canvas dibersihkan');
+            playSound('erase');
+        }
+
+        /* -------------------------------------------------------------
+           9. TOOLBAR & COLOR PALETTE CONTROLS
+           ------------------------------------------------------------- */
+        function setTool(toolName) {
+            currentTool = toolName;
+            document.querySelectorAll('.tool-btn').forEach(btn => {
+                btn.className = 'tool-btn p-3 rounded-2xl flex flex-col items-center gap-1 text-slate-600 hover:bg-slate-100 transition w-12 sm:w-14';
+            });
+
+            const activeBtn = {
+                'fill': 'toolFill',
+                'brush': 'toolBrush',
+                'eraser': 'toolEraser',
+                'pan': 'toolPan'
+            }[toolName];
+
+            if (activeBtn) {
+                document.getElementById(activeBtn).className = 'tool-btn p-3 rounded-2xl flex flex-col items-center gap-1 transition w-12 sm:w-14 bg-amber-100 text-amber-700 font-bold border-2 border-amber-400';
+            }
+            playSound('click');
+        }
+
+        function selectColor(hex) {
+            currentColor = hex;
+            document.getElementById('currentColorPreview').style.backgroundColor = hex;
+            document.getElementById('colorHexText').innerText = hex.toUpperCase();
+            document.getElementById('customColorPicker').value = hex;
+
+            // Highlight active swatch
+            document.querySelectorAll('.color-swatch').forEach(sw => {
+                if (sw.dataset.color.toLowerCase() === hex.toLowerCase()) {
+                    sw.classList.add('ring-4', 'ring-amber-400', 'scale-110');
+                } else {
+                    sw.classList.remove('ring-4', 'ring-amber-400', 'scale-110');
+                }
+            });
+            playSound('click');
+        }
+
+        function updateBrushSize(val) {
+            currentBrushSize = parseInt(val);
+            document.getElementById('brushSizeLabel').innerText = `${currentBrushSize} px`;
+        }
+
+        function updateOpacity(val) {
+            currentOpacity = parseFloat(val) / 100;
+            document.getElementById('opacityLabel').innerText = `${val}%`;
+        }
+
+        function renderPaletteSwatches() {
+            const grid = document.getElementById('colorGrid');
+            grid.innerHTML = '';
+            const palette = LEVELS_DATA[currentLevel].palettes;
+
+            document.getElementById('paletteCountLabel').innerText = `${palette.length} Warna`;
+
+            palette.forEach(hex => {
+                const button = document.createElement('button');
+                button.className = `color-swatch w-11 h-11 rounded-2xl shadow-sm border-2 border-white transition transform hover:scale-105 ${hex.toLowerCase() === currentColor.toLowerCase() ? 'ring-4 ring-amber-400 scale-110' : ''}`;
+                button.style.backgroundColor = hex;
+                button.dataset.color = hex;
+                button.onclick = () => selectColor(hex);
+                grid.appendChild(button);
+            });
+        }
+
+        function renderMiniThumbnails() {
+            const list = document.getElementById('miniThumbnailList');
+            list.innerHTML = '';
+            const drawings = LEVELS_DATA[currentLevel].drawings;
+
+            drawings.forEach((drw, idx) => {
+                const btn = document.createElement('button');
+                btn.className = `flex-shrink-0 w-16 h-16 rounded-xl border-2 overflow-hidden bg-white p-1 transition ${idx === currentDrawingIndex ? 'border-amber-500 ring-2 ring-amber-200' : 'border-slate-200 hover:border-slate-300'}`;
+                btn.innerHTML = drw.svg;
+                btn.onclick = () => {
+                    currentDrawingIndex = idx;
+                    loadCurrentDrawing();
+                    playSound('click');
+                };
+                list.appendChild(btn);
+            });
+        }
+
+        /* -------------------------------------------------------------
+           10. MODALS & CELEBRATION
+           ------------------------------------------------------------- */
+        function openLevelModal() {
+            const modal = document.getElementById('levelModal');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            switchLevelTab(currentLevel);
+            playSound('click');
+        }
+
+        function closeLevelModal() {
+            const modal = document.getElementById('levelModal');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+        }
+
+        function switchLevelTab(lvl) {
+            // Highlight Tab Buttons
+            document.querySelectorAll('.level-tab-btn').forEach((btn, idx) => {
+                if (idx + 1 === lvl) {
+                    btn.className = 'level-tab-btn flex items-center gap-2 px-4 py-3 border-b-2 font-bold text-sm transition text-amber-600 border-amber-500';
+                } else {
+                    btn.className = 'level-tab-btn flex items-center gap-2 px-4 py-3 border-b-2 font-bold text-sm transition text-slate-500 border-transparent hover:text-slate-700';
+                }
+            });
+
+            // Update Description
+            document.getElementById('levelDescText').innerText = LEVELS_DATA[lvl].desc;
+
+            // Render Modal Image Cards
+            const grid = document.getElementById('modalImageGrid');
+            grid.innerHTML = '';
+
+            LEVELS_DATA[lvl].drawings.forEach((drw, idx) => {
+                const card = document.createElement('div');
+                card.className = 'bg-slate-50 border border-slate-200 rounded-2xl p-4 hover:shadow-lg transition cursor-pointer flex flex-col justify-between group';
+                card.onclick = () => {
+                    currentLevel = lvl;
+                    currentDrawingIndex = idx;
+                    loadCurrentDrawing();
+                    closeLevelModal();
+                    playSound('click');
+                };
+
+                card.innerHTML = `
+                    <div class="w-full h-44 bg-white rounded-xl border border-slate-100 p-2 mb-3 flex items-center justify-center overflow-hidden group-hover:scale-105 transition transform">
+                        ${drw.svg}
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-slate-800 text-base mb-1">${drw.title}</h4>
+                        <p class="text-xs text-slate-500">${drw.desc}</p>
+                    </div>
+                    <button class="mt-4 w-full bg-amber-500 group-hover:bg-amber-600 text-white text-xs font-bold py-2 rounded-xl transition">
+                        Pilih & Warnai
+                    </button>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function finishCelebration() {
+            confetti({
+                particleCount: 140,
+                spread: 80,
+                origin: { y: 0.6 }
+            });
+            playSound('victory');
+
+            const modal = document.getElementById('celebrationModal');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modal.querySelector('div').classList.remove('scale-95');
+        }
+
+        function closeCelebrationModal() {
+            const modal = document.getElementById('celebrationModal');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            modal.querySelector('div').classList.add('scale-95');
+        }
+
+        function downloadImage() {
+            // Render composite to output link
+            const link = document.createElement('a');
+            link.download = `karya-mewarnai-${Date.now()}.png`;
+            link.href = mainCanvas.toDataURL('image/png');
+            link.click();
+            showToast('Karya berhasil disimpan! 🖼️');
+            playSound('click');
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = msg;
+            toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-4');
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-4');
+            }, 2500);
+        }
+
+        /* -------------------------------------------------------------
+           11. INITIALIZATION ON PAGE LOAD
+           ------------------------------------------------------------- */
+        window.onload = () => {
+            lucide.createIcons();
+            loadCurrentDrawing();
+        };
+    </script>
+</body>
+</html>
